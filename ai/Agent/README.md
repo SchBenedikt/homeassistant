@@ -4,3 +4,4 @@
 - Kalender-Integration
 ### Verbesserungen
 - Detailliertere Beschreibung
+- Prompt angepasst, damit die Begrüßung je nach Tageszeit unterscheidet.
