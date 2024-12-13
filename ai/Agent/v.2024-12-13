@@ -1,0 +1,143 @@
+blueprint:
+  name: Agent 1
+  description: |-
+    Dein persönlicher, hilfreicher Agent 1 ✨
+    
+    Ich bin hier, um dich bei deinen täglichen Routinen zu unterstützen und dafür zu sorgen, dass du bestens vorbereitet in den Tag starten kannst! 💪🌞
+
+    🌦️ **Wetter:** Ich halte dich über das aktuelle Wetter auf dem Laufenden, damit du immer passend gekleidet bist.
+
+    📅 **Kalender:** Ich informiere dich über deine bevorstehenden Termine und wichtige Ereignisse, damit du nichts verpasst.
+
+    🎉 **Besondere Anlässe:** Von Geburtstagen bis zu Jubiläen – ich erinnere dich an besondere Momente, die gefeiert werden wollen!
+
+    Mit hilfreichen Tipps und motivierenden Nachrichten sorge ich dafür, dass du positiv und produktiv in den Tag startest. 🚀💼
+  domain: automation
+  input:
+    notify_time:
+      name: Benachrichtigungszeit
+      description: Zeit, zu der die Benachrichtigung ausgelöst wird.
+      selector:
+        time: {}
+      default: 06:15:00
+    notify_service:
+      name: Benachrichtigungsdienst-Name
+      description: 📱 Der Name des Benachrichtigungsdienstes, an den die Benachrichtigung gesendet werden soll.
+      selector:
+        text: {}
+      default: notify.notify
+    notify_target:
+      name: Benachrichtigungsziel
+      description: 🎯 Das Ziel des Benachrichtigungsdienstes.
+      selector:
+        text: {}
+      default: ""
+    calendar_entity:
+      name: Kalender
+      description: 📅 Die Kalender-Entitäten, die für anstehende Ereignisse verwendet werden sollen.
+      selector:
+        entity:
+          multiple: true
+          filter:
+            - domain:
+                - calendar
+    calendar_duration:
+      name: Zeitpunkt der Kalenderereignisses
+      description: ⏰ Wie viele Stunden im Voraus nach kommenden Ereignissen gesucht wird.
+      selector:
+        duration:
+      default:
+        hours: 18
+    weather_entity:
+      name: Wetterentität
+      description: 🌦️ Die Wetterentität, die für die Wettervorhersage verwendet werden soll.
+      selector:
+        entity:
+          multiple: false
+          filter:
+            - domain:
+                - weather
+    zone_entity:
+      name: Standortzone
+      description: 🌄 Die Zonenentität, die verwendet wird, um den ungefähren Standort für die Wetterinformation zu bestimmen.
+      selector:
+        entity:
+          multiple: false
+          filter:
+            - domain:
+                - zone
+    conversation_agent:
+      name: Gesprächsagent
+      description: 🤖 Das AI-Modell, das verwendet werden soll, um deine personalisierte Nachricht zu konfigurieren..
+      selector:
+        conversation_agent:
+    prompt:
+      name: Gesprächsagent-Prompt
+      description: ✍️ Die Beschreibung, die die AI erhalten soll, um deinen personalisierten Text zu generieren.
+      selector:
+        text:
+          multiline: true
+          type: text
+      default: |-
+        Bitte generiere eine freundliche und hilfreiche Benachrichtigung für das Smartphone des Benutzers.
+
+        - Deine Antworten sollen stets hilfreich, herzlich und informativ sein.
+        - Vermeide technische Details oder spezifische Systeminformationen.
+        - Gestalte die Nachrichten so, dass sie den Benutzer motivieren, den Tag positiv zu beginnen und sich gut vorzubereiten.
+        - Berücksichtige dabei Hinweise zu außergewöhnlichem Wetter, das zur Jahreszeit passt, ohne banale Informationen zu liefern. Liefere dazu passende Empfehlungen, was ich heute anziehen sollte (z. B. lange Hose, kurze Hose, (leichte) Jacke, Pulli)
+        - Informiere über anstehende Meetings oder Termine nur, wenn es welche gibt. Liste die Ereignisse chronologisch auf. Zeige das Datum und die Uhrzeit.
+        - Falls keine Termine anstehen, informiere nicht darüber.
+        - Erwähne besondere Anlässe, wie beispielsweise Geburtstagsfeiern oder Jubiläen.
+        - Füge Emojis hinzu, um die Botschaft aufzulockern.
+        - Achte auf korrekte Grammatik und sinnvolle Satzstrukturen.
+        - Nutze Absätze.
+trigger:
+  platform: time
+  at: !input notify_time
+
+action:
+  - variables:
+      weather_entity: !input weather_entity
+      calendar_entity: !input calendar_entity
+      zone_entity: !input zone_entity
+      calendar_duration: !input calendar_duration
+      prompt: !input prompt
+      events_responses: []
+  - alias: Wettervorhersage abrufen
+    service: weather.get_forecasts
+    data:
+      type: hourly
+    target:
+      entity_id: "{{ weather_entity }}"
+    response_variable: daily_forecast
+  - variables:
+      forecast_entity: "{{ daily_forecast[weather_entity] }}"
+      forecast: "{{ forecast_entity.forecast[0] }}"
+  - alias: Kalenderereignisse für jeden Kalender abrufen
+    action: calendar.get_events
+    data:
+      duration: !input calendar_duration
+    target:
+      entity_id: !input calendar_entity
+    response_variable: calendar_response
+  - alias: "Text für Benachrichtigung erstellen"
+    service: conversation.process
+    data:
+      text: |-
+        Uhrzeit: {{ now().strftime("%A %d. %B %H:%M") }}
+        {%- if weather_entity is defined %}
+        {%- set temperature_unit = state_attr(weather_entity, 'temperature_unit') -%}
+        Wettervorhersage: {{ forecast.condition }} ({{ forecast.temperature }}{{ temperature_unit }}, {{ forecast.precipitation }}% Niederschlag)
+        {%- endif %}
+
+        {{calendar_response}}
+
+        {{ prompt }}
+      agent_id: !input conversation_agent
+    response_variable: agent
+  - alias: "Benachrichtigung senden"
+    service: !input notify_service
+    data:
+      target: !input notify_target
+      title: "Tagesagenda"
+      message: "{{ agent.response.speech.plain.speech }}"
