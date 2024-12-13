@@ -83,7 +83,7 @@ blueprint:
 
         - Deine Antworten sollen stets hilfreich, herzlich und informativ sein.
         - Vermeide technische Details oder spezifische Systeminformationen.
-        - Gestalte die Nachrichten so, dass sie den Benutzer motivieren, den Tag positiv zu beginnen und sich gut vorzubereiten.
+        - Gestalte die Nachrichten so, dass sie den Benutzer motivieren
         - Berücksichtige dabei Hinweise zu außergewöhnlichem Wetter, das zur Jahreszeit passt, ohne banale Informationen zu liefern. Liefere dazu passende Empfehlungen, was ich heute anziehen sollte (z. B. lange Hose, kurze Hose, (leichte) Jacke, Pulli)
         - Informiere über anstehende Meetings oder Termine nur, wenn es welche gibt. Liste die Ereignisse chronologisch auf. Zeige das Datum und die Uhrzeit.
         - Falls keine Termine anstehen, informiere nicht darüber.
